@@ -7,6 +7,7 @@ import pprint
 from tqdm import tqdm
 from im_utils import imresize
 from collections import defaultdict
+import h5py
 
 
 def get_n_frames_from_video(video_path, n_frames):
@@ -70,7 +71,8 @@ print('Input parameters:')
 pprint.pprint(args)
 print('*' * 40)
 
-base_dataset_path = join('datasets', args['dataset'])
+base_dataset_path_without_video = join('datasets', args['dataset'])
+base_dataset_path = join(base_dataset_path_without_video, 'video')
 classes = [d for d in os.listdir(base_dataset_path) if isdir(join(base_dataset_path, d))]
 
 print(classes)
@@ -106,6 +108,22 @@ for label_idx, class_dir in enumerate(classes):
                 if frames.shape[1] != args['out_height'] or frames.shape[2] != args['out_width']:
                     frames = imresize(frames, (args['out_height'], args['out_width']), mode='RGB')
 
-                data[key]['frames'].append(frames)
-                data[key]['labels'].append(label_idx)
+                data[key]['X'].append(frames)
+                data[key]['Y'].append(label_idx)
                 data[key]['filenames'].append(join(class_dir, subdir, filename))
+
+
+
+for key in data:
+    for subkey in data[key]:
+        data[key][subkey] = np.array(data[key][subkey])
+
+
+data_out_filename = 'data_frames_{}_h_{}_w_{}.h5'.format(args['nb_frames'], args['out_height'], args['out_width'])
+
+with h5py.File(join(base_dataset_path_without_video, data_out_filename)) as hf:
+    for key in data:
+        for subkey in data[key]:
+            hf.create_dataset(subkey + '_' + key, data=data[key][subkey])
+
+print('Script ended.')
