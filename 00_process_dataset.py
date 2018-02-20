@@ -22,7 +22,6 @@ def get_n_frames_from_video(video_path, n_frames):
         return None
 
     one_frame_every_n = tot_frames // n_frames
-    returned_frames = 0
     
     frames = []
     frame_idx = 0
@@ -47,15 +46,13 @@ def get_n_frames_from_video(video_path, n_frames):
     return frames    
 
 
-
 def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
     
     for filename in os.listdir(subdir_path):
         subdir_and_filename = join(subdir_path, filename)
         frames = get_n_frames_from_video(subdir_and_filename, n_frames)
         if frames is not None:
-            yield subdir_and_filename, frames
-
+            yield filename, frames
 
 
 parser = argparse.ArgumentParser()
@@ -93,29 +90,22 @@ for label_idx, class_dir in enumerate(classes):
     idx_subdirs_train = int(round(train_perc * num_subdirs)) 
     idx_subdirs_valid = int(round((train_perc + args['valid_perc']) * num_subdirs))
     
-    subdirs_split = {key : subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid', 'test'), ((0, idx_subdirs_train), (idx_subdirs_train, idx_subdirs_valid), (idx_subdirs_valid, num_subdirs))) }
-    
+    subdirs_split = {key: subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid', 'test'), ((0, idx_subdirs_train), (idx_subdirs_train, idx_subdirs_valid), (idx_subdirs_valid, num_subdirs)))}
 
-    
-    print
+    print()
     print(class_dir)
     print(subdirs_split)
-    print
+    print()
     
     for key in subdirs_split:
         subdirs_subset = subdirs_split[key]
 
         for subdir in tqdm(subdirs_subset, desc=class_dir + ' ' + key):
             for filename, frames in get_filenames_and_frames_from_subdir(join(base_class_path, subdir), args['nb_frames']):
-            # print filename, frames.shape
+                # print filename, frames.shape
                 if frames.shape[1] != args['out_height'] or frames.shape[2] != args['out_width']:
                     frames = imresize(frames, (args['out_height'], args['out_width']), mode='RGB')
 
                 data[key]['frames'].append(frames)
                 data[key]['labels'].append(label_idx)
-                data[key]['filenames'].append(filename)
-
-
-
-
-
+                data[key]['filenames'].append(join(class_dir, subdir, filename))
