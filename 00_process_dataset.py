@@ -81,7 +81,6 @@ train_perc = 1. - args['valid_perc'] - args['test_perc']
 
 data = defaultdict(lambda: defaultdict(list))
 
-
 for label_idx, class_dir in enumerate(classes):
     
     base_class_path = join(base_dataset_path, class_dir)
@@ -94,10 +93,10 @@ for label_idx, class_dir in enumerate(classes):
     
     subdirs_split = {key: subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid', 'test'), ((0, idx_subdirs_train), (idx_subdirs_train, idx_subdirs_valid), (idx_subdirs_valid, num_subdirs)))}
 
-    print()
+    print(' ')
     print(class_dir)
     print(subdirs_split)
-    print()
+    print(' ')
     
     for key in subdirs_split:
         subdirs_subset = subdirs_split[key]
@@ -112,18 +111,11 @@ for label_idx, class_dir in enumerate(classes):
                 data[key]['Y'].append(label_idx)
                 data[key]['filenames'].append(join(class_dir, subdir, filename))
 
-
-
-for key in data:
-    for subkey in data[key]:
-        data[key][subkey] = np.array(data[key][subkey])
-
-
 data_out_filename = 'data_frames_{}_h_{}_w_{}.h5'.format(args['nb_frames'], args['out_height'], args['out_width'])
 
 with h5py.File(join(base_dataset_path_without_video, data_out_filename)) as hf:
     for key in data:
         for subkey in data[key]:
-            hf.create_dataset(subkey + '_' + key, data=data[key][subkey])
+            hf.create_dataset(subkey + '_' + key, data=np.array(data[key][subkey]))
 
 print('Script ended.')
