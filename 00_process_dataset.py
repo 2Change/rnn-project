@@ -13,12 +13,12 @@ def get_n_frames_from_video(video_path, n_frames):
     
     vc = cv2.VideoCapture(video_path)
     if not vc.isOpened():
-        print 'Couldnt open file', video_path
+        print('Couldnt open file ' + video_path)
         return None
 
     tot_frames = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
     if tot_frames < n_frames:
-        print 'Too less frames', video_path, 'File is discarded'
+        print('Too less frames: ' + video_path + '. File is discarded')
         return None
 
     one_frame_every_n = tot_frames // n_frames
@@ -98,8 +98,8 @@ for label_idx, class_dir in enumerate(classes):
 
     
     print
-    print class_dir
-    print subdirs_split
+    print(class_dir)
+    print(subdirs_split)
     print
     
     for key in subdirs_split:
