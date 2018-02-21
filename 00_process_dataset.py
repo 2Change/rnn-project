@@ -63,6 +63,7 @@ parser.add_argument('--valid_perc', help='Percentage of validation set', type=fl
 parser.add_argument('--test_perc', help='Percentage of test set', type=float, default=0.2)
 parser.add_argument('--out_height', help='Ouptut height for each frame', type=int, default=240)
 parser.add_argument('--out_width', help='Output width for each frame', type=int, default=320)
+parser.add_argument('--separate_files', help='Create one h5 file for each clip', action='store_true', default=False)
 
 args = vars(parser.parse_args())
 
@@ -80,6 +81,7 @@ print(classes)
 train_perc = 1. - args['valid_perc'] - args['test_perc']
 
 data = defaultdict(lambda: defaultdict(list))
+separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
 
 for label_idx, class_dir in enumerate(classes):
     
@@ -100,6 +102,9 @@ for label_idx, class_dir in enumerate(classes):
     
     for key in subdirs_split:
         subdirs_subset = subdirs_split[key]
+        separate_split_out_dir = join(base_dataset_path_without_video, separate_files_out_dir, key)
+        if not os.path.exists(separate_split_out_dir):
+            os.makedirs(separate_split_out_dir)
 
         for subdir in tqdm(subdirs_subset, desc=class_dir + ' ' + key):
             for filename, frames in get_filenames_and_frames_from_subdir(join(base_class_path, subdir), args['nb_frames']):
@@ -107,15 +112,26 @@ for label_idx, class_dir in enumerate(classes):
                 if frames.shape[1] != args['out_height'] or frames.shape[2] != args['out_width']:
                     frames = imresize(frames, (args['out_height'], args['out_width']), mode='RGB')
 
-                data[key]['X'].append(frames)
-                data[key]['Y'].append(label_idx)
-                data[key]['filenames'].append(join(class_dir, subdir, filename))
+                complete_filename = join(class_dir, subdir, filename)
 
-data_out_filename = 'data_frames_{}_h_{}_w_{}.h5'.format(args['nb_frames'], args['out_height'], args['out_width'])
+                if not args['separate_files']:
+                    data[key]['X'].append(frames)
+                    data[key]['Y'].append(label_idx)
+                    data[key]['filenames'].append(complete_filename)
+                else:
+                    with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
+                        hf.create_dataset('X', data=frames)
+                        hf.create_dataset('Y', data=np.array([label_idx]))
+                        hf.create_dataset('filenames', data=np.array([complete_filename]))
+                        
+                
 
-with h5py.File(join(base_dataset_path_without_video, data_out_filename)) as hf:
-    for key in data:
-        for subkey in data[key]:
-            hf.create_dataset(subkey + '_' + key, data=np.array(data[key][subkey]))
+if not args['separate_files']:
+    data_out_filename = 'data_frames_{}_h_{}_w_{}.h5'.format(args['nb_frames'], args['out_height'], args['out_width'])
+
+    with h5py.File(join(base_dataset_path_without_video, data_out_filename)) as hf:
+        for key in data:
+            for subkey in data[key]:
+                hf.create_dataset(subkey + '_' + key, data=np.array(data[key][subkey]))
 
 print('Script ended.')
