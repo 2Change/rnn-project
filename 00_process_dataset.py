@@ -64,6 +64,7 @@ parser.add_argument('--test_perc', help='Percentage of test set', type=float, de
 parser.add_argument('--out_height', help='Ouptut height for each frame', type=int, default=240)
 parser.add_argument('--out_width', help='Output width for each frame', type=int, default=320)
 parser.add_argument('--separate_files', help='Create one h5 file for each clip', action='store_true', default=False)
+parser.add_argument('--inception', help='save inceptionV3 output', action='store_true', default=False)
 
 args = vars(parser.parse_args())
 
@@ -82,6 +83,10 @@ train_perc = 1. - args['valid_perc'] - args['test_perc']
 
 data = defaultdict(lambda: defaultdict(list))
 separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
+
+if args['inception']:
+    from keras.applications.inception_v3 import InceptionV3
+    inception = InceptionV3()
 
 for label_idx, class_dir in enumerate(classes):
     
@@ -118,11 +123,15 @@ for label_idx, class_dir in enumerate(classes):
                     data[key]['X'].append(frames)
                     data[key]['Y'].append(label_idx)
                     data[key]['filenames'].append(complete_filename)
+                    if args['inception']:
+                        data[key]['inception'].append(inception.predict(frames))
                 else:
                     with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
                         hf.create_dataset('X', data=frames)
                         hf.create_dataset('Y', data=np.array([label_idx]))
                         hf.create_dataset('filenames', data=np.array([complete_filename]))
+                        if args['inception']:
+                            hf.create_dataset('inception', data=inception.predict(frames))
                         
                 
 
