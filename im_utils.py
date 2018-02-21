@@ -1,9 +1,7 @@
 from __future__ import division
 
 import numpy as np
-import cv2
 import scipy, scipy.misc
-import matplotlib.pyplot as plt
 from math import sqrt, floor, ceil
 
 
@@ -99,6 +97,8 @@ def plotgrid(images, nrows=None, ncols=None, show=True, to_file=None):
     :param to_file: (optional) if specified, save the grid to the specified location
 
     """
+    import matplotlib.pyplot as plt
+
 
     if len(images.shape) == 3:
         if images.shape[-1] > 3:
@@ -145,6 +145,9 @@ def cv2_imshow(filename, title='some image', waitKey=None):
     :param waitKey: (optional) if specified, calls cv2.waitKey with the specified amount of time
 
     """
+
+    import cv2
+
 
     img = cv2.imread(filename, 0)
     cv2.imshow(title, img)
