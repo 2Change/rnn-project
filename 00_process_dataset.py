@@ -85,8 +85,12 @@ data = defaultdict(lambda: defaultdict(list))
 separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
 
 if args['inception']:
+    from keras_utils import set_keras_session
     from keras.applications.inception_v3 import InceptionV3
-    inception = InceptionV3()
+    
+    set_keras_session()
+    inception = InceptionV3(include_top=False)
+
 
 for label_idx, class_dir in enumerate(classes):
     
