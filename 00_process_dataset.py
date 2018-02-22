@@ -55,6 +55,11 @@ def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
         if frames is not None:
             yield filename, frames
 
+def preprocess_images(images):
+
+    # InceptionV3 requires images to be in range -1 to 1.
+    return ((images / 255.) - 0.5) * 2
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', help='UCF11, ...', default='UCF11')
@@ -128,14 +133,14 @@ for label_idx, class_dir in enumerate(classes):
                     data[key]['Y'].append(label_idx)
                     #data[key]['filenames'].append(complete_filename)
                     if args['inception']:
-                        data[key]['inception'].append(inception.predict(((frames.astype(np.float)/255)-0.5)*2))
+                        data[key]['inception'].append(inception.predict(preprocess_images(frames)))
                 else:
                     with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
                         hf.create_dataset('X', data=frames)
                         hf.create_dataset('Y', data=np.array([label_idx]))
                         #hf.create_dataset('filenames', data=np.array([complete_filename]))
                         if args['inception']:
-                            hf.create_dataset('inception', data=inception.predict(((frames.astype(np.float)/255)-0.5)*2))
+                            hf.create_dataset('inception', data=inception.predict(preprocess_images(frames)))
                         
                 
 
