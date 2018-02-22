@@ -128,14 +128,14 @@ for label_idx, class_dir in enumerate(classes):
                     data[key]['Y'].append(label_idx)
                     #data[key]['filenames'].append(complete_filename)
                     if args['inception']:
-                        data[key]['inception'].append(inception.predict(frames))
+                        data[key]['inception'].append(inception.predict(((frames.astype(np.float)/255)-0.5)*2))
                 else:
                     with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
                         hf.create_dataset('X', data=frames)
                         hf.create_dataset('Y', data=np.array([label_idx]))
                         #hf.create_dataset('filenames', data=np.array([complete_filename]))
                         if args['inception']:
-                            hf.create_dataset('inception', data=inception.predict(frames))
+                            hf.create_dataset('inception', data=inception.predict(((frames.astype(np.float)/255)-0.5)*2))
                         
                 
 
