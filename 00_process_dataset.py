@@ -43,8 +43,10 @@ def get_n_frames_from_video(video_path, n_frames):
     
     frames = np.array(frames)
 
-    assert len(frames.shape) == 4 and frames.shape[0] == n_frames
-    return frames    
+    if len(frames.shape) == 4 and frames.shape[0] == n_frames:
+        return frames
+    else:
+        print('Problem with', video_path, 'frames.shape', frames.shape, 'tot_frames is', tot_frames)    
 
 
 def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
@@ -86,18 +88,21 @@ print(classes)
 
 train_perc = 1. - args['valid_perc'] - args['test_perc']
 
+
 data = defaultdict(lambda: defaultdict(list))
-separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
+
+if args['separate_files']:
+   separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
 
 if args['inception']:
     from keras_utils import set_keras_session
     from keras.applications.inception_v3 import InceptionV3
     
-    set_keras_session()
+    #set_keras_session()
     inception = InceptionV3(include_top=False)
 
 
-for label_idx, class_dir in enumerate(classes):
+for label_idx, class_dir in enumerate(sorted(classes)):
     
     base_class_path = join(base_dataset_path, class_dir)
     subdirs = [d for d in os.listdir(base_class_path) if isdir(join(base_class_path, d)) and d != 'Annotation']
