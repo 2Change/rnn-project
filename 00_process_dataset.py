@@ -140,7 +140,7 @@ for label_idx, class_dir in enumerate(sorted(classes)):
                     data[key]['Y'].append(label_idx)
                     #data[key]['filenames'].append(complete_filename)
                     if args['inception']:
-                        data[key]['inception'].append(inception.predict(preprocess_images(frames)))
+                        data[key]['inception'].append(inception.predict(preprocess_images_tf(frames)))
                 else:
                     with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
                         hf.create_dataset('X', data=frames)
