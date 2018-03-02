@@ -8,6 +8,7 @@ from tqdm import tqdm
 from im_utils import imresize
 from collections import defaultdict
 import h5py
+from utils import preprocess_images_tf
 
 
 def get_n_frames_from_video(video_path, n_frames):
@@ -67,10 +68,6 @@ def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
         if frames is not None:
             yield filename, frames
 
-def preprocess_images(images):
-
-    # InceptionV3 requires images to be in range -1 to 1.
-    return ((images / 255.) - 0.5) * 2
 
 
 parser = argparse.ArgumentParser()
@@ -150,7 +147,7 @@ for label_idx, class_dir in enumerate(sorted(classes)):
                         hf.create_dataset('Y', data=np.array([label_idx]))
                         #hf.create_dataset('filenames', data=np.array([complete_filename]))
                         if args['inception']:
-                            hf.create_dataset('inception', data=inception.predict(preprocess_images(frames)))
+                            hf.create_dataset('inception', data=inception.predict(preprocess_images_tf(frames)))
                         
                 
 
