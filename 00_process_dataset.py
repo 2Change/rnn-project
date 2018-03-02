@@ -66,8 +66,7 @@ def preprocess_images(images):
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', help='UCF11, ...', default='UCF11')
 parser.add_argument('--nb_frames', help='Number of frames per clip', type=int, default=50)
-parser.add_argument('--valid_perc', help='Percentage of validation set', type=float, default=0.2)
-parser.add_argument('--test_perc', help='Percentage of test set', type=float, default=0.2)
+parser.add_argument('--train_perc', help='Percentage of training set', type=float, default=0.7)
 parser.add_argument('--out_height', help='Ouptut height for each frame', type=int, default=240)
 parser.add_argument('--out_width', help='Output width for each frame', type=int, default=320)
 parser.add_argument('--separate_files', help='Create one h5 file for each clip', action='store_true', default=False)
@@ -85,9 +84,6 @@ base_dataset_path = join(base_dataset_path_without_video, 'video')
 classes = [d for d in os.listdir(base_dataset_path) if isdir(join(base_dataset_path, d))]
 
 print(classes)
-
-train_perc = 1. - args['valid_perc'] - args['test_perc']
-
 
 data = defaultdict(lambda: defaultdict(list))
 
@@ -109,10 +105,9 @@ for label_idx, class_dir in enumerate(sorted(classes)):
     subdirs.sort()
 
     num_subdirs = len(subdirs)
-    idx_subdirs_train = int(round(train_perc * num_subdirs)) 
-    idx_subdirs_valid = int(round((train_perc + args['valid_perc']) * num_subdirs))
+    idx_subdirs_train = int(round(args['train_perc'] * num_subdirs)) 
     
-    subdirs_split = {key: subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid', 'test'), ((0, idx_subdirs_train), (idx_subdirs_train, idx_subdirs_valid), (idx_subdirs_valid, num_subdirs)))}
+    subdirs_split = {key: subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid'), ((0, idx_subdirs_train), (idx_subdirs_train, num_subdirs)))}
 
     print(' ')
     print(class_dir)
