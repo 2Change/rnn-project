@@ -7,8 +7,8 @@ import pprint
 from tqdm import tqdm
 from im_utils import imresize
 from collections import defaultdict
-import h5py
 from utils import preprocess_images_tf
+from PIL import Image
 
 
 def get_n_frames_from_video(video_path, n_frames):
@@ -76,8 +76,6 @@ parser.add_argument('--nb_frames', help='Number of frames per clip', type=int, d
 parser.add_argument('--train_perc', help='Percentage of training set', type=float, default=0.7)
 parser.add_argument('--out_height', help='Ouptut height for each frame', type=int, default=240)
 parser.add_argument('--out_width', help='Output width for each frame', type=int, default=320)
-parser.add_argument('--separate_files', help='Create one h5 file for each clip', action='store_true', default=False)
-parser.add_argument('--inception', help='save inceptionV3 output', action='store_true', default=False)
 
 args = vars(parser.parse_args())
 
@@ -94,17 +92,9 @@ print(classes)
 
 data = defaultdict(lambda: defaultdict(list))
 
-if args['separate_files']:
-   separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
+separate_files_out_dir = 'prova_separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
 
-if args['inception']:
-    from keras_utils import set_keras_session
-    from keras.applications.inception_v3 import InceptionV3
-    
-    #set_keras_session()
-    inception = InceptionV3(include_top=False)
-
-
+# for every class
 for label_idx, class_dir in enumerate(sorted(classes)):
     
     base_class_path = join(base_dataset_path, class_dir)
@@ -114,6 +104,7 @@ for label_idx, class_dir in enumerate(sorted(classes)):
     num_subdirs = len(subdirs)
     idx_subdirs_train = int(round(args['train_perc'] * num_subdirs)) 
     
+    # split the video collection in train test
     subdirs_split = {key: subdirs[range_min:range_max] for key, (range_min, range_max) in zip(('train', 'valid'), ((0, idx_subdirs_train), (idx_subdirs_train, num_subdirs)))}
 
     print(' ')
@@ -123,40 +114,22 @@ for label_idx, class_dir in enumerate(sorted(classes)):
     
     for key in subdirs_split:
         subdirs_subset = subdirs_split[key]
-        separate_split_out_dir = join(base_dataset_path_without_video, separate_files_out_dir, key)
+        separate_split_out_dir = join(base_dataset_path_without_video, separate_files_out_dir, key, class_dir)
         if not os.path.exists(separate_split_out_dir):
             os.makedirs(separate_split_out_dir)
 
         for subdir in tqdm(subdirs_subset, desc=class_dir + ' ' + key):
+         
             for filename, frames in get_filenames_and_frames_from_subdir(join(base_class_path, subdir), args['nb_frames']):
                 # print filename, frames.shape
                 if frames.shape[1] != args['out_height'] or frames.shape[2] != args['out_width']:
                     frames = imresize(frames, (args['out_height'], args['out_width']), mode='RGB')
-
-                complete_filename = join(class_dir, subdir, filename)
-
-                if not args['separate_files']:
-                    data[key]['X'].append(frames)
-                    data[key]['Y'].append(label_idx)
-                    #data[key]['filenames'].append(complete_filename)
-                    if args['inception']:
-                        data[key]['inception'].append(inception.predict(preprocess_images_tf(frames)))
-                else:
-                    with h5py.File(join(separate_split_out_dir, complete_filename.replace('/', '_') + '.h5')) as hf:
-                        hf.create_dataset('X', data=frames)
-                        hf.create_dataset('Y', data=np.array([label_idx]))
-                        #hf.create_dataset('filenames', data=np.array([complete_filename]))
-                        if args['inception']:
-                            hf.create_dataset('inception', data=inception.predict(preprocess_images_tf(frames)))
-                        
                 
+                video_dir = join(separate_split_out_dir, filename[:filename.rfind('.')])
+                os.makedirs(video_dir)
 
-if not args['separate_files']:
-    data_out_filename = 'data_frames_{}_h_{}_w_{}.h5'.format(args['nb_frames'], args['out_height'], args['out_width'])
-
-    with h5py.File(join(base_dataset_path_without_video, data_out_filename)) as hf:
-        for key in data:
-            for subkey in data[key]:
-                hf.create_dataset(subkey + '_' + key, data=np.array(data[key][subkey]))
+                for frame_idx, frame in enumerate(frames):
+                    im = Image.fromarray(frame)
+                    im.save(join(video_dir, "frame_{:02}.jpg".format(frame_idx)))
 
 print('Script ended.')
