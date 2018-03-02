@@ -17,36 +17,46 @@ def get_n_frames_from_video(video_path, n_frames):
         print('Couldnt open file ' + video_path)
         return None
 
-    tot_frames = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
-    if tot_frames < n_frames:
+    # WARNING: this value is not always accurate! Sometimes it could be an estimation
+    # of the number of frames. 
+    # See https://stackoverflow.com/questions/31472155/python-opencv-cv2-cv-cv-cap-prop-frame-count-get-wrong-numbers
+    # We can still use this for estimating if the number of video frames is lower than the number required by us.
+    # (or we could get rid of that)
+    tot_frames_cv = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    if tot_frames_cv < n_frames:
         print('Too less frames: ' + video_path + '. File is discarded')
         return None
-
-    one_frame_every_n = tot_frames // n_frames
+    
+    # Since we cannot rely on the exact number returned by vc.get(cv2.CAP_PROP_FRAME_COUNT),
+    # we are going to save temporarily all frames into the frames variable, so we know
+    # the exact number of frames.
     
     frames = []
-    frame_idx = 0
 
     while vc.isOpened():
         ret, frame = vc.read()
         if not ret:
             break
-    
-        frame_idx += 1
-
-        if frame_idx % one_frame_every_n == 0:
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            if len(frames) == n_frames:
-                break
+            
+        frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     vc.release()
     
+    tot_frames_exact = len(frames)
+    one_frame_every_n = tot_frames_exact // n_frames
+    
+    frames = frames[::one_frame_every_n]
+    
+    # By using the above the line, we usually take more frames than the number required.
+    # Here we make sure to take exactly (the first) n_frames.
+    frames = frames[:n_frames]
     frames = np.array(frames)
 
     if len(frames.shape) == 4 and frames.shape[0] == n_frames:
         return frames
     else:
-        print('Problem with', video_path, 'frames.shape', frames.shape, 'tot_frames is', tot_frames)    
+        print('Problem with', video_path, 'frames.shape', frames.shape, 'tot_frames is', tot_frames_exact)   
 
 
 def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
