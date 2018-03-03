@@ -70,8 +70,9 @@ def get_filenames_and_frames_from_subdir(subdir_path, n_frames):
 
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--dataset', help='UCF11, ...', default='UCF11')
+parser.add_argument('--out_format', help='Choose output format', choices=['images', 'inception'], default='images')
 parser.add_argument('--nb_frames', help='Number of frames per clip', type=int, default=50)
 parser.add_argument('--train_perc', help='Percentage of training set', type=float, default=0.7)
 parser.add_argument('--out_height', help='Ouptut height for each frame', type=int, default=240)
@@ -92,7 +93,14 @@ print(classes)
 
 data = defaultdict(lambda: defaultdict(list))
 
-separate_files_out_dir = 'prova_separate_frames_{}_h_{}_w_{}'.format(args['nb_frames'], args['out_height'], args['out_width'])
+separate_files_out_dir = 'separate_frames_{}_h_{}_w_{}_{}'.format(args['nb_frames'], args['out_height'], args['out_width'], args['out_format'])
+
+if args['out_format'] == 'inception':
+    
+    from keras.applications.inception_v3 import InceptionV3
+    from utils import preprocess_images_tf
+    
+    inception = InceptionV3(include_top=False, pooling='avg')
 
 # for every class
 for label_idx, class_dir in enumerate(sorted(classes)):
@@ -126,10 +134,20 @@ for label_idx, class_dir in enumerate(sorted(classes)):
                     frames = imresize(frames, (args['out_height'], args['out_width']), mode='RGB')
                 
                 video_dir = join(separate_split_out_dir, filename[:filename.rfind('.')])
-                os.makedirs(video_dir)
+                
+                if args['out_format'] == 'images':
+                    
+                    os.makedirs(video_dir)
 
-                for frame_idx, frame in enumerate(frames):
-                    im = Image.fromarray(frame)
-                    im.save(join(video_dir, "frame_{:02}.jpg".format(frame_idx)))
+                    for frame_idx, frame in enumerate(frames):
+                        im = Image.fromarray(frame)
+                        im.save(join(video_dir, "frame_{:02}.jpg".format(frame_idx)))
+                else:
+                    
+                    frames = preprocess_images_tf(frames)
+                    inception_output = inception.predict(frames)
+                    
+                    np.save(video_dir, inception_output)
+                        
 
 print('Script ended.')
