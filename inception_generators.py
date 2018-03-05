@@ -86,6 +86,40 @@ def valid_generator_single_images(dataset_dir):
                 
                 yield inception_frames, labels
                 
+
+
+def dataset_loader(dataset_dir, split_key, mode):
+    
+    base_dir = join(dataset_dir, split_key)
+    
+    dataset_structure = get_dataset_split_structure(base_dir)
+    all_classes = dataset_structure.keys()
+    class_to_idx_dict = get_class_to_idx_dict(all_classes)
+        
+    for cl in all_classes:
+
+        class_idx = class_to_idx_dict[cl]
+
+        for video in dataset_structure[cl]:
+
+            inception_features = np.load(join(base_dir, cl, video))
+            
+            if mode == 'rnn':
+                yield inception_features, class_idx
+            elif mode == 'cnn': 
+                for inception_feature in inception_features:
+                    yield inception_feature, class_idx
+                
+
+def load_whole_dataset(dataset_dir, mode, split_keys):
+    
+    for split_key in split_keys:
+        
+        data = list(dataset_loader(dataset_dir, split_key, mode))
+        X, Y = map(np.array, zip(*data))
+        
+        yield X, to_categorical(Y)
+                
                 
                 
 def _sequential_infinite_iterator_rnn(base_dir, dataset_structure):
