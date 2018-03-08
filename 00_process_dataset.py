@@ -47,6 +47,9 @@ def get_n_frames_from_video(video_path, n_frames):
     tot_frames_exact = len(frames)
     one_frame_every_n = tot_frames_exact // n_frames
     
+    if one_frame_every_n == 0:   # I don't know why this happens
+        return None
+
     frames = frames[::one_frame_every_n]
     
     # By using the above the line, we usually take more frames than the number required.
@@ -99,6 +102,9 @@ if args['out_format'] == 'inception':
     
     from keras.applications.inception_v3 import InceptionV3
     from utils import preprocess_images_tf
+    from keras_utils import set_keras_session
+
+    set_keras_session()
     
     inception = InceptionV3(include_top=False, pooling='avg')
 
