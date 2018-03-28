@@ -7,6 +7,7 @@ Project work - Computer Vision and Image Processing
 * Pillow
 * tqdm
 
+### Final [Report](https://htmlpreview.github.io/?https://github.com/2Change/rnn-project/blob/master/tutorial/Project_Summary_Activity_Recognition_RNN.html)
 
 ### Results
 
