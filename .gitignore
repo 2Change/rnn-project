@@ -1,5 +1,7 @@
-datasets
-models
+datasets/
+models/
+bin/
+cfg/
 
 #pycharm
 .idea

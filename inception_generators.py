@@ -24,7 +24,7 @@ def get_dataset_split_structure(dataset_split_path):
 
 
 
-def train_generator_single_images(dataset_dir, batch_size):
+def train_generator_single_images(dataset_dir, batch_size, cache_size=5000, additional_data=None):
     
     base_dir = join(dataset_dir, 'train')
     
@@ -32,11 +32,17 @@ def train_generator_single_images(dataset_dir, batch_size):
     all_classes = list(dataset_structure.keys())
     class_to_idx_dict = get_class_to_idx_dict(all_classes)
     
+    tot_videos = next(count_num_videos(dataset_dir, 'train'))
+    num_calls = tot_videos // batch_size
+    yield num_calls
+    
+    cache = {}
     
     while True:
         
         inception_frames = []
         labels = []
+        add_data = []
         
         for _ in range(batch_size):
             
@@ -44,32 +50,55 @@ def train_generator_single_images(dataset_dir, batch_size):
             class_idx = class_to_idx_dict[random_class]
             
             random_video = random.choice(dataset_structure[random_class])
-            full_video_path = join(base_dir, random_class, random_video)
             
-            video_array = np.load(full_video_path)
+            cache_key = join(random_class, random_video)
+            video_array = cache.get(cache_key, None)
+                
+            if video_array is None:
+            
+                full_video_path = join(base_dir, random_class, random_video)
+                video_array = np.load(full_video_path)
+                
+                if len(cache) < cache_size:
+                    cache[cache_key] = video_array
+           
+        
             random_frame_idx = np.random.randint(len(video_array))
             
             random_frame = video_array[random_frame_idx]
             
             inception_frames.append(random_frame)
             labels.append(class_idx)
+            
+            if additional_data is not None:
+                add_data.append(additional_data[random_class][random_video][random_frame_idx])
                 
         assert len(labels) == len(inception_frames)
         
         inception_frames = np.array(inception_frames)
         labels = to_categorical(np.array(labels), len(all_classes))
         
-        yield inception_frames, labels
+        if additional_data is not None:
+            
+            add_data = np.array(add_data)
+            yield [add_data, inception_frames], [labels]
+            
+        else:
+            yield inception_frames, labels
         
         
         
-def valid_generator_single_images(dataset_dir):
+def valid_generator_single_images(dataset_dir, additional_data=None):
     
     base_dir = join(dataset_dir, 'valid')
     
     dataset_structure = get_dataset_split_structure(base_dir)
     all_classes = dataset_structure.keys()
     class_to_idx_dict = get_class_to_idx_dict(all_classes)
+    
+    tot_videos = next(count_num_videos(dataset_dir, 'valid'))
+    yield tot_videos
+    
     
     while True:
         
@@ -84,7 +113,12 @@ def valid_generator_single_images(dataset_dir):
                 labels = [class_idx] * len(inception_frames)
                 labels = to_categorical(np.array(labels), len(all_classes))
                 
-                yield inception_frames, labels
+                if additional_data is not None:
+                    
+                    yield [additional_data[cl][video], inception_frames], [labels]
+                    
+                else:
+                    yield inception_frames, labels
                 
 
 
@@ -144,11 +178,11 @@ def _sequential_infinite_iterator_rnn(base_dir, dataset_structure):
 
                 inception_frames = np.load(join(base_dir, cl, video))
 
-                yield inception_frames, class_idx
+                yield cl, video, inception_frames, class_idx
                 
                 
                 
-def _random_infinite_iterator_rnn(base_dir, dataset_structure):
+def _random_infinite_iterator_rnn(base_dir, dataset_structure, cache_size=4096):
     
     """
         This iterator yields infinitely all videos from a dataset in a random way.
@@ -161,16 +195,26 @@ def _random_infinite_iterator_rnn(base_dir, dataset_structure):
     class_to_idx_dict = get_class_to_idx_dict(all_classes)
     
     
+    cache = {}
+    
     while True:
             
         random_class = random.choice(all_classes)
         class_idx = class_to_idx_dict[random_class]
             
         random_video = random.choice(dataset_structure[random_class])
-
-        inception_frames = np.load(join(base_dir, random_class, random_video))
         
-        yield inception_frames, class_idx
+        cache_key = join(random_class, random_video)
+        inception_frames = cache.get(cache_key, None)
+        
+        if inception_frames is None:
+                
+            inception_frames = np.load(join(base_dir, random_class, random_video))
+            
+            if len(cache) < cache_size:
+                cache[cache_key] = inception_frames
+        
+        yield random_class, random_video, inception_frames, class_idx
         
         
         
@@ -185,7 +229,7 @@ def _get_iterator(split_key):
     
     
 
-def frames_generator_rnn(dataset_dir, split_key, batch_size):
+def frames_generator_rnn(dataset_dir, split_key, batch_size, additional_data=None):
     
     """
         Internally this method uses _sequential_infinite_iterator_rnn to iterate on the validation set.
@@ -212,7 +256,38 @@ def frames_generator_rnn(dataset_dir, split_key, batch_size):
         for _ in range(num_calls):
             
             data = take(d_iterator, batch_size)
-            videos, labels = map(np.array, zip(*data))          
+            class_names, video_names, videos, labels = map(np.array, zip(*data))
             labels = to_categorical(labels, len(all_classes))
-
-            yield videos, labels
+            
+            if additional_data is not None:
+                
+                additional_data_batch = np.array([additional_data[cl][v] 
+                                                  for cl, v in zip(class_names, video_names)])
+                
+                yield [additional_data_batch, videos], [labels]
+                    
+                
+            else:
+                yield videos, labels
+            
+            
+def sparse_frame_generator(x, y, target_frames, batch_size):
+    while True:
+        # pick batch_size indexes between 0 and len(x)
+        batch_indexes = np.random.choice(len(x), batch_size)
+        batch_x, batch_y = x[batch_indexes], y[batch_indexes]
+        batch_x = np.array([extract_n_random_frames(video, target_frames) for video in batch_x])
+        yield batch_x, batch_y
+        
+        
+def extract_n_random_frames(video, target_frames):
+    # no need to explain
+    return video[np.sort(np.random.choice(len(video), target_frames))]
+    
+    
+    
+    
+    
+    
+    
+    
